@@ -25,8 +25,8 @@ export const siteConfig = {
   bgImages: ["https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg", "https://bu.dusays.com/2026/03/24/69c26fe4acdb5.jpg", "https://bu.dusays.com/2026/03/24/69c26fe4d9486.jpg"],
 
   // 🌟 壁纸分组系统：前台轮播「激活分组」内的图片（保持 JSON 格式，便于后台解析）
-  bgGroups: [{"id": "default", "name": "默认", "images": ["https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg", "https://bu.dusays.com/2026/03/24/69c26fe4acdb5.jpg", "https://bu.dusays.com/2026/03/24/69c26fe4d9486.jpg"]}, {"id": "bg-1790920894965", "name": "风景", "images": ["https://cdn.svipaigc.com/bizi/2024/03/231928-17111207687df9.jpg", "https://cdn.svipaigc.com/bizi/2025/05/20250524152446-6831e4be8228e-scaled.jpg", "https://cdn.svipaigc.com/bizi/2024/02/190949-151947058914b4.jpg", "https://cdn.svipaigc.com/bizi/2023/11/182333-16931318136c55.jpg", "https://ts1.tc.mm.bing.net/th/id/R-C.08ca21be6b067c60a9a536e153c14e87?rik=ndAHuC2ayYmTKg&riu=http%3a%2f%2fimg.netbian.com%2ffile%2f20110727%2fdb5e0a081f21cf9fcb6390536f7933f7.jpg&ehk=toF1qbqiFjjgJn3c%2bMmer6qOEr6j6wv8W2Ou%2fdzdw3Q%3d&risl=&pid=ImgRaw&r=0", "https://img-baofun.zhhainiao.com/fs/15cdd2b1ea6cd26f53e76bbf9ca46b3b.jpg"]}],
-  activeBgGroup: "bg-1790920894965",
+  bgGroups: [{"id": "default", "name": "默认", "images": ["https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg", "https://bu.dusays.com/2026/03/24/69c26fe4acdb5.jpg", "https://bu.dusays.com/2026/03/24/69c26fe4d9486.jpg"]}],
+  activeBgGroup: "default",
 
   // 4. 文章默认封面图 (当 Markdown 没写 cover 时显示)
   defaultPostCover: "https://bu.dusays.com/2026/03/24/69c1e38b346cb.jpg",
