@@ -72,6 +72,49 @@ def extract_balanced_array(content, open_idx):
     return None
 
 
+def strip_trailing_commas(content):
+    """Remove TS trailing commas without changing quoted names or image URLs."""
+    output = []
+    quote = None
+    i = 0
+    while i < len(content):
+        char = content[i]
+        if quote:
+            output.append(char)
+            if char == '\\' and i + 1 < len(content):
+                i += 1
+                output.append(content[i])
+            elif char == quote:
+                quote = None
+        elif char in ('"', "'"):
+            quote = char
+            output.append(char)
+        elif char == ',':
+            next_index = i + 1
+            while next_index < len(content) and content[next_index].isspace():
+                next_index += 1
+            if next_index == len(content) or content[next_index] not in ']}':
+                output.append(char)
+        else:
+            output.append(char)
+        i += 1
+    return ''.join(output)
+
+
+def insert_config_field(content, key, value):
+    """Add new wallpaper fields when upgrading an existing personal config."""
+    pattern = r'(export\s+const\s+siteConfig\s*=\s*\{)'
+    updated, count = re.subn(
+        pattern,
+        lambda match: match.group(1) + '\n  ' + key + ': ' + value + ',',
+        content,
+        count=1,
+    )
+    if not count:
+        raise ValueError('未找到 siteConfig 配置对象，已取消保存')
+    return updated
+
+
 # =========================================================
 # 🚀 接口 1：读取配置 (GET) - 终极安全隔离版 (🌟 修复布尔值读取)
 # =========================================================
@@ -122,7 +165,7 @@ def get_site_config():
             if span:
                 try:
                     # 容错：清理 TS 允许的尾随逗号，保证可被 JSON 解析
-                    parsed_config['bgGroups'] = json.loads(re.sub(r',\s*([\]}])', r'\1', span))
+                    parsed_config['bgGroups'] = json.loads(strip_trailing_commas(span))
                 except Exception:
                     pass
                 root_content = root_content.replace(span, '', 1)
@@ -229,6 +272,9 @@ def update_site_config(payload: Dict[str, Any] = Body(...)):
                         content = content.replace(span, val_str, 1)
                         print(f"  ✅ 成功修改并落盘(壁纸分组专列) -> [{key}]")
                         updated_count += 1
+                else:
+                    content = insert_config_field(content, key, val_str)
+                    updated_count += 1
                 continue
 
             # ================= 原有的通用处理逻辑 =================
@@ -253,6 +299,9 @@ def update_site_config(payload: Dict[str, Any] = Body(...)):
             if re.search(pattern, content):
                 content = re.sub(pattern, lambda m: m.group(1) + val_str, content, count=1)
                 print(f"  ✅ 成功修改并落盘 -> [{key}]")
+                updated_count += 1
+            elif key == 'activeBgGroup':
+                content = insert_config_field(content, key, val_str)
                 updated_count += 1
 
         # 写入物理磁盘

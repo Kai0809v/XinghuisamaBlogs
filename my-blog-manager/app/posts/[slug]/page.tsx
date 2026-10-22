@@ -38,21 +38,28 @@ export async function generateStaticParams() {
 }
 
 function extractToc(content: string) {
-  // 🌟 扫描标题前，先把围栏代码块（```...``` 和 ~~~...~~~）整体移除，
-  //    否则代码块里以 # 开头的注释行会被正则误判成一级标题塞进目录树。
-  const stripped = content
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/~~~[\s\S]*?~~~/g, '');
-
-  const headingRegex = /^(#{1,3})\s+(.+)$/gm;
   const toc = [];
-  let match;
-  while ((match = headingRegex.exec(stripped)) !== null) {
-    toc.push({
-      level: match[1].length,
-      text: match[2].trim(),
-      id: match[2].trim().toLowerCase().replace(/\s+/g, '-')
-    });
+  let fence: { marker: string; length: number } | null = null;
+  for (const line of content.split(/\r?\n/)) {
+    const delimiter = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (delimiter) {
+      const marker = delimiter[1][0];
+      if (!fence) {
+        if (marker !== '`' || !delimiter[2].includes('`')) {
+          fence = { marker, length: delimiter[1].length };
+          continue;
+        }
+      } else if (marker === fence.marker && delimiter[1].length >= fence.length && !delimiter[2].trim()) {
+        fence = null;
+        continue;
+      }
+    }
+    if (fence) continue;
+    const match = line.match(/^(#{1,3})\s+(.+)$/);
+    if (match) {
+      const text = match[2].trim();
+      toc.push({ level: match[1].length, text, id: text.toLowerCase().replace(/\s+/g, '-') });
+    }
   }
   return toc;
 }

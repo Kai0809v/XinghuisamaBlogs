@@ -6,10 +6,10 @@ export default function BackgroundSlider() {
   const [index, setIndex] = useState(0);
 
   // 🌟 壁纸分组系统：优先使用「激活分组」的图片轮播；无分组数据时回退到旧版 bgImages
-  const activeGroup = (siteConfig as any).bgGroups?.find(
-    (g: { id: string }) => g.id === (siteConfig as any).activeBgGroup
+  const activeGroup = siteConfig.bgGroups?.find(
+    (g) => g.id === siteConfig.activeBgGroup
   );
-  const images = activeGroup?.images?.length ? activeGroup.images : siteConfig.bgImages || [];
+  const images = activeGroup ? activeGroup.images : siteConfig.bgImages || [];
 
   useEffect(() => {
     if (images.length <= 1) return;
