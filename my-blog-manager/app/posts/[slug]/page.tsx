@@ -38,10 +38,16 @@ export async function generateStaticParams() {
 }
 
 function extractToc(content: string) {
+  // 🌟 扫描标题前，先把围栏代码块（```...``` 和 ~~~...~~~）整体移除，
+  //    否则代码块里以 # 开头的注释行会被正则误判成一级标题塞进目录树。
+  const stripped = content
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/~~~[\s\S]*?~~~/g, '');
+
   const headingRegex = /^(#{1,3})\s+(.+)$/gm;
   const toc = [];
   let match;
-  while ((match = headingRegex.exec(content)) !== null) {
+  while ((match = headingRegex.exec(stripped)) !== null) {
     toc.push({
       level: match[1].length,
       text: match[2].trim(),
@@ -222,13 +228,33 @@ export default async function Post({ params }: { params: Promise<{ slug: string 
                     font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, ui-monospace, monospace !important; 
                     font-variant-ligatures: contextual !important; 
                   }
-                  .prose pre code { 
-                    background-color: transparent !important; 
-                    padding: 0 !important; 
-                    color: inherit !important; 
-                    font-size: 0.85em !important; 
+                  .prose pre code {
+                    background-color: transparent !important;
+                    padding: 0 !important;
+                    color: inherit !important;
+                    font-size: 0.85em !important;
                   }
-                  
+
+                  /* 🌟 GFM 表格：边框 + 表头底色 + 宽表格横向滚动（防止列内容互相覆盖） */
+                  .prose table {
+                    display: block !important;
+                    overflow-x: auto !important;
+                    white-space: nowrap !important;
+                    border-collapse: collapse !important;
+                    width: 100% !important;
+                    margin: 1.5rem 0 !important;
+                    font-size: 0.95rem !important;
+                  }
+                  .prose thead { background-color: rgba(99, 102, 241, 0.08) !important; }
+                  .prose th, .prose td {
+                    border: 1px solid #cbd5e1 !important;
+                    padding: 0.5rem 0.85rem !important;
+                    text-align: left !important;
+                    white-space: normal !important;
+                  }
+                  .prose th { font-weight: 700 !important; }
+                  .dark .prose th, .dark .prose td { border-color: #475569 !important; }
+
                   .prose code::before, .prose code::after { content: none !important; }
                   .prose p code, .prose li code { background-color: rgba(99, 102, 241, 0.1) !important; color: #6366f1 !important; padding: 0.1rem 0.3rem !important; border-radius: 0.25rem !important; font-weight: 600 !important; font-size: 0.85em !important; }
                   .dark .prose p code, .dark .prose li code { background-color: rgba(99, 102, 241, 0.2) !important; color: #818cf8 !important; }

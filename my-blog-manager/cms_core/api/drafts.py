@@ -219,13 +219,34 @@ async def sync_local_operations(request: Request):
             raw_html = re.sub(r'<p>&#12288;<\/p>', '<br><br>', raw_html)
             raw_html = re.sub(r'<p><\/p>', '<br><br>', raw_html)
 
-            # 2. 调用 markdownify 进行基础转换，保留 img
+            # 2. 调用 markdownify 进行基础转换，保留 img、br
             # 强制让它保留 br 标签！
-            md_content = md(raw_html, heading_style="ATX", keep=['img', 'br'])
+            # 🌟 关闭下划线/星号转义：修复正文里 _config -> \_config、* -> \* 的问题
+            #    （代码块内本就不转义，这里只影响正文文本）
+            md_content = md(
+                raw_html,
+                heading_style="ATX",
+                keep=['img', 'br'],
+                escape_underscores=False,
+                escape_asterisks=False,
+            )
 
             # 3. 转换完毕后，markdownify 可能会把 <br> 留下来，
             # 为了在 MD 中形成真实的空行，我们把保留下来的 <br> 或者 <br/> 全部替换为纯粹的 \n\n
+            # 🌟 但在替换之前，必须先把围栏代码块（```...```）整体占位保护起来，
+            #    否则 <br>->\n\n 的正则会跑到代码块内部，把代码炸成空行、破坏缩进（修复代码块缩进丢失）
+            _code_blocks = []
+            def _stash_code(m):
+                _code_blocks.append(m.group(0))
+                return f"\x00CODEBLOCK{len(_code_blocks) - 1}\x00"
+            md_content = re.sub(r"```[^\n]*\n[\s\S]*?\n```", _stash_code, md_content)
+
+            # 现在安全地把 <br> 替换为 \n\n（不会影响代码块）
             md_content = re.sub(r'<br\s*\/?>', '\n\n', md_content)
+
+            # 4. 还原代码块（原样贴回，缩进/内容完全保留）
+            for _i, _block in enumerate(_code_blocks):
+                md_content = md_content.replace(f"\x00CODEBLOCK{_i}\x00", _block)
             # ==========================================
 
             # 🌟 处理日期与精确时间
