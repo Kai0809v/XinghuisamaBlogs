@@ -4,7 +4,12 @@ import { siteConfig } from '../siteConfig';
 
 export default function BackgroundSlider() {
   const [index, setIndex] = useState(0);
-  const images = siteConfig.bgImages;
+
+  // 🌟 壁纸分组系统：优先使用「激活分组」的图片轮播；无分组数据时回退到旧版 bgImages
+  const activeGroup = (siteConfig as any).bgGroups?.find(
+    (g: { id: string }) => g.id === (siteConfig as any).activeBgGroup
+  );
+  const images = activeGroup?.images?.length ? activeGroup.images : siteConfig.bgImages || [];
 
   useEffect(() => {
     if (images.length <= 1) return;
@@ -15,6 +20,9 @@ export default function BackgroundSlider() {
 
     return () => clearInterval(timer);
   }, [images.length]);
+
+  // 图片列表长度变化时重置索引，防止越界
+  useEffect(() => { setIndex(0); }, [images.length]);
 
   return (
     <div className="absolute inset-0 z-[-10] overflow-hidden">

@@ -32,6 +32,9 @@ function SettingsContent() {
     social: siteConfig.social || {},
     cloudMusicIds: [...(siteConfig.cloudMusicIds || [])],
     bgImages: [...(siteConfig.bgImages || [])],
+    // 👇 🌟 壁纸分组系统初始化
+    bgGroups: ((siteConfig as any).bgGroups || []).map((g: any) => ({ ...g, images: [...(g.images || [])] })),
+    activeBgGroup: (siteConfig as any).activeBgGroup || 'default',
     gitalkConfig: siteConfig.gitalkConfig || {
       clientID: '',
       clientSecret: '',
@@ -73,6 +76,9 @@ function SettingsContent() {
             ...data.data,
             social: { ...(prev.social || {}), ...(data.data.social || {}) },
             gitalkConfig: { ...(prev.gitalkConfig || {}), ...(data.data.gitalkConfig || {}) },
+            // 👇 🌟 合并后端发来的壁纸分组数据
+            bgGroups: data.data.bgGroups?.length ? data.data.bgGroups : prev.bgGroups,
+            activeBgGroup: data.data.activeBgGroup || prev.activeBgGroup,
             danmakuList: data.data.danmakuList ? [...data.data.danmakuList] : prev.danmakuList,
             buildDate: data.data.buildDate || prev.buildDate,
             icpConfig: data.data.icpConfig || prev.icpConfig,
