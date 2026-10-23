@@ -1,3 +1,7 @@
+# Version 0.4.1 - Wallpaper and Editor Improvements
+
+Includes 0.4.0 Daily Briefing plus wallpaper groups (PR #25, original commit author Kai) and GFM table/code-block improvements (PR #15, original commit author ILoveFurina). Original commits and maintainer fixes are retained. Empty wallpaper groups, special-character configuration round trips, literal prose characters, strikethrough, code formatting and fenced-code table-of-contents handling have been corrected. See UpdateLog.md and the Chinese README for details.
+
 # Version 0.4.0 - Daily Briefing Console
 
 The optional Daily Briefing module is managed in Settings. New installations start with display and Agent reception disabled, empty content, and no fixed subject area. Configure interests and channels, edit drafts and covers, review sources, then publish to the selected local website directory.
