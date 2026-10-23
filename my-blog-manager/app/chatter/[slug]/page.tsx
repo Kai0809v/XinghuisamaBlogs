@@ -256,13 +256,33 @@ export default async function ChatterDetail({ params }: { params: Promise<{ slug
                     letter-spacing: 0.02em !important;
                   }
                   
-                  .prose pre code { 
-                    background-color: transparent !important; 
-                    padding: 0 !important; 
-                    color: inherit !important; 
-                    font-size: 0.85em !important; 
+                  .prose pre code {
+                    background-color: transparent !important;
+                    padding: 0 !important;
+                    color: inherit !important;
+                    font-size: 0.85em !important;
                   }
-                  
+
+                  /* 🌟 GFM 表格：边框 + 表头底色 + 宽表格横向滚动（防止列内容互相覆盖） */
+                  .prose table {
+                    display: block !important;
+                    overflow-x: auto !important;
+                    white-space: nowrap !important;
+                    border-collapse: collapse !important;
+                    width: 100% !important;
+                    margin: 1.5rem 0 !important;
+                    font-size: 0.95rem !important;
+                  }
+                  .prose thead { background-color: rgba(99, 102, 241, 0.08) !important; }
+                  .prose th, .prose td {
+                    border: 1px solid #cbd5e1 !important;
+                    padding: 0.5rem 0.85rem !important;
+                    text-align: left !important;
+                    white-space: normal !important;
+                  }
+                  .prose th { font-weight: 700 !important; }
+                  .dark .prose th, .dark .prose td { border-color: #475569 !important; }
+
                   .prose code::before, .prose code::after { content: none !important; }
                   
                   .prose p code, .prose li code { 

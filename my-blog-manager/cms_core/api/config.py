@@ -41,6 +41,80 @@ def dict_to_ts_string(data, indent=2):
     return json.dumps(data, ensure_ascii=False)
 
 
+def extract_balanced_array(content, open_idx):
+    """🌟 壁纸分组专用：从 open_idx（指向 '['）开始做字符串感知的括号计数，
+    返回完整的数组文本。bgGroups 是「对象数组且内嵌 images 数组」，
+    普通非贪婪正则会在第一个 ']' 处截断，必须用括号平衡算法。"""
+    depth = 0
+    i = open_idx
+    in_str = False
+    quote = ''
+    n = len(content)
+    while i < n:
+        c = content[i]
+        if in_str:
+            if c == '\\':
+                i += 2
+                continue
+            if c == quote:
+                in_str = False
+        else:
+            if c in ('"', "'"):
+                in_str = True
+                quote = c
+            elif c == '[':
+                depth += 1
+            elif c == ']':
+                depth -= 1
+                if depth == 0:
+                    return content[open_idx:i + 1]
+        i += 1
+    return None
+
+
+def strip_trailing_commas(content):
+    """Remove TS trailing commas without changing quoted names or image URLs."""
+    output = []
+    quote = None
+    i = 0
+    while i < len(content):
+        char = content[i]
+        if quote:
+            output.append(char)
+            if char == '\\' and i + 1 < len(content):
+                i += 1
+                output.append(content[i])
+            elif char == quote:
+                quote = None
+        elif char in ('"', "'"):
+            quote = char
+            output.append(char)
+        elif char == ',':
+            next_index = i + 1
+            while next_index < len(content) and content[next_index].isspace():
+                next_index += 1
+            if next_index == len(content) or content[next_index] not in ']}':
+                output.append(char)
+        else:
+            output.append(char)
+        i += 1
+    return ''.join(output)
+
+
+def insert_config_field(content, key, value):
+    """Add new wallpaper fields when upgrading an existing personal config."""
+    pattern = r'(export\s+const\s+siteConfig\s*=\s*\{)'
+    updated, count = re.subn(
+        pattern,
+        lambda match: match.group(1) + '\n  ' + key + ': ' + value + ',',
+        content,
+        count=1,
+    )
+    if not count:
+        raise ValueError('未找到 siteConfig 配置对象，已取消保存')
+    return updated
+
+
 # =========================================================
 # 🚀 接口 1：读取配置 (GET) - 终极安全隔离版 (🌟 修复布尔值读取)
 # =========================================================
@@ -82,6 +156,19 @@ def get_site_config():
                         sub_dict['admin'] = []
 
                 parsed_config[dict_name] = sub_dict
+
+        # 1.5 🌟 壁纸分组：数组内嵌对象与 images 数组，需括号平衡专用解析
+        # 同时必须从 root_content 剔除，防止通用正则误抓组内的 id/name 字段
+        bg_start = re.search(r'bgGroups\s*:\s*\[', root_content)
+        if bg_start:
+            span = extract_balanced_array(root_content, bg_start.end() - 1)
+            if span:
+                try:
+                    # 容错：清理 TS 允许的尾随逗号，保证可被 JSON 解析
+                    parsed_config['bgGroups'] = json.loads(strip_trailing_commas(span))
+                except Exception:
+                    pass
+                root_content = root_content.replace(span, '', 1)
 
         # 2. 🌟 核心升级：提取外层基础变量（现在支持 字符串、布尔值、数字！）
         for match in re.finditer(r'([a-zA-Z0-9_]+)\s*:\s*(?:(["\'])([\s\S]*?)\2|(true|false|\d+))', root_content):
@@ -128,7 +215,9 @@ def update_site_config(payload: Dict[str, Any] = Body(...)):
         "navSuffix",
         "navAfter",
         "friendLinkApplyFormat",
-        "enableLevelSystem" # 👈 你加的字段在这里，完美！
+        "enableLevelSystem", # 👈 你加的字段在这里，完美！
+        "bgGroups",       # 👈 🌟 壁纸分组系统
+        "activeBgGroup"   # 👈 🌟 当前启用的分组 id
     }
 
     try:
@@ -173,6 +262,21 @@ def update_site_config(payload: Dict[str, Any] = Body(...)):
                     updated_count += 1
                 continue
 
+            # 专属通道 2：壁纸分组（数组内嵌 images 数组，非贪婪正则会截断，必须括号平衡替换）
+            if key == "bgGroups":
+                val_str = json.dumps(value, ensure_ascii=False)
+                m = re.search(r'bgGroups\s*:\s*\[', content)
+                if m:
+                    span = extract_balanced_array(content, m.end() - 1)
+                    if span:
+                        content = content.replace(span, val_str, 1)
+                        print(f"  ✅ 成功修改并落盘(壁纸分组专列) -> [{key}]")
+                        updated_count += 1
+                else:
+                    content = insert_config_field(content, key, val_str)
+                    updated_count += 1
+                continue
+
             # ================= 原有的通用处理逻辑 =================
             # 🌟 核心修复：这里原本就支持将 bool 转换成 'true' 或 'false' 字符串写入，所以 POST 没问题！
             if isinstance(value, str):
@@ -195,6 +299,9 @@ def update_site_config(payload: Dict[str, Any] = Body(...)):
             if re.search(pattern, content):
                 content = re.sub(pattern, lambda m: m.group(1) + val_str, content, count=1)
                 print(f"  ✅ 成功修改并落盘 -> [{key}]")
+                updated_count += 1
+            elif key == 'activeBgGroup':
+                content = insert_config_field(content, key, val_str)
                 updated_count += 1
 
         # 写入物理磁盘

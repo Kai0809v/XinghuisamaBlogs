@@ -43,5 +43,6 @@ next-env.d.ts
 # Local briefing credentials, drafts and runtime data
 /manager_data/briefing/
 *.connection.json
+# Python backend caches
 __pycache__/
 *.py[cod]

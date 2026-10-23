@@ -17,6 +17,7 @@ import socket
 import json
 import subprocess
 import traceback
+os.environ.setdefault("XHS_MANAGER_ROOT", EXE_DIR)
 from cms_core.main import app
 
 frontend_process = None

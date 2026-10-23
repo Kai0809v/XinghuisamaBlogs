@@ -38,15 +38,28 @@ export async function generateStaticParams() {
 }
 
 function extractToc(content: string) {
-  const headingRegex = /^(#{1,3})\s+(.+)$/gm;
   const toc = [];
-  let match;
-  while ((match = headingRegex.exec(content)) !== null) {
-    toc.push({
-      level: match[1].length,
-      text: match[2].trim(),
-      id: match[2].trim().toLowerCase().replace(/\s+/g, '-')
-    });
+  let fence: { marker: string; length: number } | null = null;
+  for (const line of content.split(/\r?\n/)) {
+    const delimiter = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (delimiter) {
+      const marker = delimiter[1][0];
+      if (!fence) {
+        if (marker !== '`' || !delimiter[2].includes('`')) {
+          fence = { marker, length: delimiter[1].length };
+          continue;
+        }
+      } else if (marker === fence.marker && delimiter[1].length >= fence.length && !delimiter[2].trim()) {
+        fence = null;
+        continue;
+      }
+    }
+    if (fence) continue;
+    const match = line.match(/^(#{1,3})\s+(.+)$/);
+    if (match) {
+      const text = match[2].trim();
+      toc.push({ level: match[1].length, text, id: text.toLowerCase().replace(/\s+/g, '-') });
+    }
   }
   return toc;
 }
@@ -223,6 +236,26 @@ export default async function Post({ params }: { params: Promise<{ slug: string 
                     font-size: 0.85em !important; 
                   }
                   
+                  /* 🌟 GFM 表格：边框 + 表头底色 + 宽表格横向滚动（防止列内容互相覆盖） */
+                  .prose table {
+                    display: block !important;
+                    overflow-x: auto !important;
+                    white-space: nowrap !important;
+                    border-collapse: collapse !important;
+                    width: 100% !important;
+                    margin: 1.5rem 0 !important;
+                    font-size: 0.95rem !important;
+                  }
+                  .prose thead { background-color: rgba(99, 102, 241, 0.08) !important; }
+                  .prose th, .prose td {
+                    border: 1px solid #cbd5e1 !important;
+                    padding: 0.5rem 0.85rem !important;
+                    text-align: left !important;
+                    white-space: normal !important;
+                  }
+                  .prose th { font-weight: 700 !important; }
+                  .dark .prose th, .dark .prose td { border-color: #475569 !important; }
+
                   .prose code::before, .prose code::after { content: none !important; }
                   .prose p code, .prose li code { background-color: rgba(99, 102, 241, 0.1) !important; color: #6366f1 !important; padding: 0.1rem 0.3rem !important; border-radius: 0.25rem !important; font-weight: 600 !important; font-size: 0.85em !important; }
                   .dark .prose p code, .dark .prose li code { background-color: rgba(99, 102, 241, 0.2) !important; color: #818cf8 !important; }

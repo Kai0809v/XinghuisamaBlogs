@@ -2,6 +2,7 @@
 
 import React, { useState, useImperativeHandle, forwardRef, useEffect, useRef } from 'react';
 import { useEditor, EditorContent, Extension } from '@tiptap/react';
+import { DOMParser as PMDOMParser } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
@@ -17,6 +18,12 @@ import TaskItem from '@tiptap/extension-task-item';
 
 // 🌟 引入 Markdown 插件
 import { Markdown } from 'tiptap-markdown';
+
+// 🌟 引入 Tiptap 表格扩展（配合 tiptap-markdown 解析粘贴的 GFM |表格|）
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
 
 // 🌟 引入满血版 C++ 语法高亮
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
@@ -51,6 +58,22 @@ const FontSize = Extension.create({
   addOptions() { return { types: ['textStyle'] }; },
   addGlobalAttributes() { return [{ types: this.options.types, attributes: { fontSize: { default: null, parseHTML: element => element.style.fontSize?.replace(/['"]+/g, ''), renderHTML: attributes => attributes.fontSize ? { style: `font-size: ${attributes.fontSize}` } : {} } } }]; },
   addCommands() { return { setFontSize: (fontSize: string) => ({ chain }) => chain().setMark('textStyle', { fontSize }).run() }; },
+});
+
+// 🌟 启用 markdown-it 的 GFM 表格规则：tiptap-markdown 构造 markdown-it 时默认未启用 table 规则，
+//    这里通过其官方 parse.setup(md) 钩子（每次 parse 都会调用）补上 enable('table')，
+//    这样粘贴进来的 |表格| 才会被解析成 <table>，再映射到 Tiptap 表格节点。
+const MarkdownTableRule = Extension.create({
+  name: 'markdownTableRule',
+  addStorage() {
+    return {
+      markdown: {
+        parse: {
+          setup(md: any) { md.enable('table'); },
+        },
+      },
+    };
+  },
 });
 
 // 🌟 终极修复：彻底废弃 absolute 下拉框，升级为 Fixed 居中模态框 (Modal)！
@@ -138,6 +161,20 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, EditorProps>(({ title, s
         heading: { levels: [1, 2, 3] },
         codeBlock: false,
       }),
+      // 🌟 挂载 Markdown 扩展：transformPastedText 让粘贴进来的 markdown 文本（**bold**、|表格|、```代码```、列表等）被解析成真实富文本节点
+      Markdown.configure({
+        html: true,                  // 后端 /get 送来的是 HTML（python-markdown + nl2br），setContent 必须能吃 HTML
+        breaks: false,               // 单换行不转 <br>，匹配标准 markdown 语义与现有往返（后端读用 nl2br、写用 <br>->\n\n）
+        linkify: false,              // 不自动把裸 URL 转链接，避免范围外行为变更
+        transformPastedText: true,   // ★ 关键：粘贴的 markdown 文本被解析为真实节点
+        transformCopiedText: false,  // 复制行为不变
+        tightLists: true,
+      }),
+      MarkdownTableRule,             // 启用 markdown-it 表格规则，配合下面的表格节点解析 |表格|
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableCell,
+      TableHeader,
       CodeBlockLowlight.configure({
         lowlight,
         defaultLanguage: 'cpp',
@@ -186,8 +223,25 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, EditorProps>(({ title, s
   useEffect(() => {
     if (!editor || !initialContent) return;
     if (loadedContentRef.current !== initialContent) {
-      const safeContent = initialContent.replace(/~~([\s\S]*?)~~/g, '<s>$1</s>');
-      editor.commands.setContent(safeContent, false);
+      // 🌟 检测输入是不是 HTML（后端 /get 用 python-markdown 转出来的是 HTML）。
+      //    tiptap-markdown 的 setContent 会强制把内容丢给 markdown-it 解析，
+      //    对 markdown 粘贴/新建是好事；但对 HTML，markdown-it 会按 CommonMark 把
+      //    `<p>front</p>` 后面的 `<pre class="..."><code class="language-...">` 吞进同一个
+      //    html_block，导致代码块被错误关闭，代码内的 `# 注释` 行被当成 h1 标题，
+      //    把代码拦腰斩断（这是用户报告的"编辑已发布文章时代码被切断"）。
+      //    修法：HTML 输入走 ProseMirror DOMParser 直接解析成 JSON，再用 setContent(json)
+      //    喂回去——Markdown 扩展的 parser.parse 对非字符串输入直接返回原值，不走 markdown-it。
+      const trimmed = initialContent.trim();
+      if (trimmed.startsWith('<')) {
+        const parser = PMDOMParser.fromSchema(editor.schema);
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = initialContent;
+        const doc = parser.parse(wrapper);
+        editor.commands.setContent(doc.toJSON() as any, { emitUpdate: false });
+      } else {
+        // 纯 markdown 文本（粘贴场景下不太可能到这里，但保留这条路径以防万一）
+        editor.commands.setContent(initialContent, { emitUpdate: false });
+      }
       loadedContentRef.current = initialContent;
     }
   }, [editor, initialContent]);
@@ -230,9 +284,15 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, EditorProps>(({ title, s
         .editor-content-area h2 { font-size: 2.2rem !important; font-weight: 800 !important; margin-bottom: 1.5rem !important; margin-top: 2rem !important; } 
         .editor-content-area h3 { font-size: 1.5rem !important; font-weight: 700 !important; margin-bottom: 1rem !important; } 
         .editor-content-area p { font-size: 1.15rem !important; line-height: 1.85 !important; } 
-        .editor-content-area ul { list-style-type: disc !important; padding-left: 1.5rem !important; } 
+        .editor-content-area ul { list-style-type: disc !important; padding-left: 1.5rem !important; }
         .editor-content-area ol { list-style-type: decimal !important; padding-left: 1.5rem !important; }
-        
+
+        /* 🌟 表格基础样式：让粘贴/解析进来的 GFM 表格在编辑器里可见可编辑 */
+        .editor-content-area table { border-collapse: collapse; width: 100%; margin: 1.5rem 0; }
+        .editor-content-area th, .editor-content-area td { border: 1px solid #cbd5e1; padding: 0.5rem 0.75rem; text-align: left; }
+        .editor-content-area th { background: rgba(99,102,241,0.08); font-weight: 700; }
+        .dark .editor-content-area th, .dark .editor-content-area td { border-color: #475569; }
+
         .editor-content-area s, .editor-content-area del { text-decoration-line: line-through !important; opacity: 0.6; }
 
         .editor-content-area blockquote {
