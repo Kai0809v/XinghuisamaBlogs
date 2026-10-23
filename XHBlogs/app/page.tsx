@@ -99,8 +99,6 @@ export default function Home() {
             <SearchBar posts={allPosts} />
 
             <main className="flex flex-col gap-6 w-full mt-6">
-              <DailyBriefing />
-
               {/* 第一行：个人信息 + 播放器 */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
                 {/* 手机上占满1列，电脑上占7列 */}
@@ -150,6 +148,9 @@ export default function Home() {
 
                 </div>
               </div>
+
+              {/* 每日选刊：位于首页内容矩阵下方 */}
+              <DailyBriefing />
 
               {/* 底部数据面板 */}
               <div className="w-full mt-4"><SiteDashboard/></div>
