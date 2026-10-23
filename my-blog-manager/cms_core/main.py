@@ -32,3 +32,7 @@ app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])
 app.include_router(moments.router, prefix="/api/moments", tags=["Moments"])
 app.include_router(sync.router, prefix="/api/sync", tags=["Sync"])
 app.include_router(deploy.router, prefix="/api/deploy", tags=["Deploy"])
+
+# Fall-through service: existing routes remain first and retain their behavior.
+from cms_core.briefing_integration import BriefingIntegration
+app.mount("/", BriefingIntegration())

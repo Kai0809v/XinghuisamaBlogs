@@ -115,6 +115,8 @@ if __name__ == "__main__":
     backend_port = get_free_port()
 
     env_vars = os.environ.copy()
+    env_vars["XHS_MANAGER_ROOT"] = EXE_DIR
+    env_vars["XHS_BRIEFING_API_PORT"] = str(backend_port)
     env_vars["PORT"] = str(frontend_port)
 
     standalone_dir = os.path.join(BASE_DIR, '.next', 'standalone')

@@ -9,7 +9,7 @@ import { useToast } from './ToastProvider';
 import { AlertTriangle } from 'lucide-react';
 import { siteConfig } from '../siteConfig';
 
-export default function Navbar() {
+export default function Navbar({ previewOnly = false, compact = false }: { previewOnly?: boolean; compact?: boolean }) {
   const [showNav, setShowNav] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isOpBoxOpen, setIsOpBoxOpen] = useState(false);
@@ -22,6 +22,7 @@ export default function Navbar() {
   const { showToast } = useToast();
 
   useEffect(() => {
+    if (previewOnly) return;
     const fetchPath = async () => {
       try {
         const configRes = await fetch(`/backend_config.json?t=${Date.now()}`);
@@ -40,7 +41,7 @@ export default function Navbar() {
       }
     };
     fetchPath();
-  }, []);
+  }, [previewOnly]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -197,7 +198,7 @@ export default function Navbar() {
       <header className={`w-full fixed top-0 left-0 right-0 z-[100] transition-all duration-500 border-b ${showNav ? 'translate-y-0' : '-translate-y-full'} bg-white/40 dark:bg-slate-900/50 backdrop-blur-xl border-white/20 dark:border-white/5 shadow-sm pywebview-drag-region`}>
         <div className="w-[95%] max-w-7xl mx-auto h-16 flex items-center justify-between px-4 box-border">
 
-          <Link href="/" className="text-xl font-black text-slate-800 dark:text-white tracking-tighter">
+          <Link href="/" className="min-w-0 truncate text-xl font-black text-slate-800 dark:text-white tracking-tighter">
             {siteConfig.navTitle}
             <span className="text-indigo-500 mx-1">
               {siteConfig.navSuffix || 'の'}
@@ -207,15 +208,15 @@ export default function Navbar() {
 
           <div className="flex items-center gap-6" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
             <nav className="hidden lg:flex gap-8 text-sm font-bold">
-              {navLinks.map((link) => (
-                <Link key={link.href} href={link.href} className={`relative py-1 transition-colors ${pathname === link.href ? 'text-indigo-600' : 'text-slate-700 dark:text-slate-200'}`}>
+              {(compact ? navLinks.filter(link => ['/', '/settings'].includes(link.href)) : navLinks).map((link) => (
+                <Link key={link.href} href={link.href} className={`relative whitespace-nowrap py-1 transition-colors ${pathname === link.href ? 'text-indigo-600' : 'text-slate-700 dark:text-slate-200'}`}>
                   {link.name}
                 </Link>
               ))}
             </nav>
 
             <div className="relative">
-              <button onClick={() => setIsOpBoxOpen(!isOpBoxOpen)} className="relative w-10 h-10 rounded-xl bg-white/50 dark:bg-slate-800/50 flex items-center justify-center text-lg hover:scale-105 transition-all border border-white/20 shadow-sm cursor-pointer">
+              <button disabled={previewOnly} title={previewOnly ? '预览副本未连接网站同步与发布' : '待处理操作'} onClick={() => setIsOpBoxOpen(!isOpBoxOpen)} className="relative w-10 h-10 rounded-xl bg-white/50 dark:bg-slate-800/50 flex items-center justify-center text-lg hover:scale-105 transition-all border border-white/20 shadow-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-40">
                 📥
                 {operations.length > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center">
