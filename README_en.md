@@ -1,3 +1,13 @@
+# Version 0.4.0 - Daily Briefing Console
+
+The optional Daily Briefing module is managed in Settings. New installations start with display and Agent reception disabled, empty content, and no fixed subject area. Configure interests and channels, edit drafts and covers, review sources, then publish to the selected local website directory.
+
+The briefing service starts with the original CMS and uses its actual port. Agent credentials are independent and revocable. Use the in-console JSON guide and downloadable Python client for a read-only connection test, then draft submission. Existing drafts and published dates are protected. Scheduling and online Git deployment are separate; the computer, backend and generating Agent must be running. DSH is deferred.
+
+The updater preserves personal configuration, posts, existing briefing data, images and private credentials/drafts; it backs up replaced program files and stops on unsaved program edits. Save and back up your content before upgrading. Node.js 20.9 or newer is required by the current Next.js version. See the Chinese README and UpdateLog.md for detailed instructions. Review PDFs are local-only.
+
+---
+
 # 🌟 Welcome to XHBlogs!
 
 This is a personal blog system built with Next.js, featuring a Glassmorphism design. This project includes a frontend display and an independent local backend console. It supports Markdown writing, draft management, and image hosting configuration.

@@ -1,0 +1,7 @@
+
+.update-backups/
+**/manager_data/briefing/
+*.connection.json
+__pycache__/
+*.py[cod]
+/tests/tmp*/

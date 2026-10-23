@@ -4,6 +4,7 @@ import matter from 'gray-matter';
 import Link from 'next/link';
 
 import Navbar from '../components/Navbar';
+import DailyBriefing from '../components/DailyBriefing';
 import PageTransition from '../components/PageTransition';
 import SearchBar from '../components/SearchBar';
 import { siteConfig } from '../siteConfig';
@@ -98,6 +99,7 @@ export default function Home() {
             <SearchBar posts={allPosts} />
 
             <main className="flex flex-col gap-6 w-full mt-6">
+              <DailyBriefing />
 
               {/* 第一行：个人信息 + 播放器 */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">

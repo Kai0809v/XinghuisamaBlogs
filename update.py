@@ -1,96 +1,104 @@
+"""Apply upstream program files, retaining user data and a backup of replaced files."""
 import os
-import sys
-import subprocess
+import hashlib
+import json
 import shutil
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
 
-# 强制切换到脚本所在目录
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+ROOT = Path(__file__).resolve().parent
+INITIAL_DATA = {'briefingConfig.json', 'dailyBriefing.json', 'dailyBriefingArchive.json', 'dailyBriefingCovers.json', 'dailyBriefing-history.json', 'dailyBriefing.ts', 'terraReadingNotes.ts'}
 
 
-def print_step(msg):
-    print(f"\n{'=' * 55}\n🐱 {msg}\n{'=' * 55}")
-
-
-def run_cmd(cmd, cwd=None):
-    try:
-        subprocess.run(cmd, shell=True, check=True, cwd=cwd)
+def managed_path(name):
+    parts = Path(name).parts
+    if len(parts) == 1:
+        return name in {'update.py', 'update.bat', 'LICENSE', 'README.md', 'README_en.md', 'UpdateLog.md', '.gitignore'}
+    if parts[0] == 'scripts':
         return True
-    except subprocess.CalledProcessError:
-        print(f"❌ 命令执行失败: {cmd}")
+    if parts[0] not in ('XHBlogs', 'my-blog-manager') or len(parts) < 2:
         return False
+    if parts[1] in ('posts', 'chatters', 'moments', 'manager_data') or parts[-1] in ('siteConfig.ts', 'deploy_config.json', 'backend_config.json', 'window_config.json'):
+        return False
+    if parts[1] == 'data':
+        return parts[-1] in INITIAL_DATA
+    if parts[1] == 'app' and Path(name).suffix == '.md':
+        return False
+    return parts[1] in {'app', 'components', 'context', 'lib', 'cms_core', 'public'} or len(parts)==2 and parts[1] in {'package.json', 'package-lock.json', 'postcss.config.mjs', 'tsconfig.json', 'next.config.ts', 'launcher.py', 'run_me.py', 'Start.bat', '.gitignore'}
+
+
+def preserve_existing(name, exists):
+    if not exists:
+        return False
+    parts = Path(name).parts
+    return len(parts)>2 and (parts[1]=='data' or parts[1]=='public' and parts[-1]!='briefing_agent.py')
+
+
+def git(*args):
+    return subprocess.check_output(['git', *args], cwd=ROOT)
 
 
 def main():
-    print_step("XingHuiSama升级程序 (Python 稳定版)")
-
-    # 1. 环境自检
-    if not shutil.which("git"):
-        print("❌ 致命错误：未找到 Git！请前往 git-scm.com 下载安装。")
-        sys.exit(1)
-    if not shutil.which("node") or not shutil.which("npm"):
-        print("❌ 致命错误：未找到 Node.js/npm！请先安装 Node.js。")
-        sys.exit(1)
-
-    # 2. Git 仓库修复
-    if not os.path.exists(".git"):
-        print("🪄 初始化 Git 环境...")
-        run_cmd("git init")
-        run_cmd("git remote add origin https://github.com/heiehiehi/XinghuisamaBlogs.git")
-
-    # 3. 拉取更新
-    print_step("[1/4] 连接云端获取最新代码...")
-    if not run_cmd("git fetch origin main"):
-        sys.exit(1)
-
-    # 4. 精准替换文件（再也不怕空格和换行符了！）
-    print_step("[2/4] 执行核心文件精准替换...")
-    files_to_update = [
-        "update.py", "update.bat",
-        "LICENSE", "README.md", "scripts/checkConfig.mjs", "README_en.md",
-
-        # 前端文件
-        "XHBlogs/app/about/page.tsx", "XHBlogs/app/api", "XHBlogs/app/chatter",
-        "XHBlogs/app/friends", "XHBlogs/app/moments", "XHBlogs/app/music",
-        "XHBlogs/app/photowall", "XHBlogs/app/posts", "XHBlogs/app/projects",
-        "XHBlogs/app/timeline", "XHBlogs/app/globals.css", "XHBlogs/app/layout.tsx",
-        "XHBlogs/app/page.tsx", "XHBlogs/components", "XHBlogs/public", "XHBlogs/app/tree",
-        "XHBlogs/.gitignore", "XHBlogs/package.json", "XHBlogs/package-lock.json",
-        "XHBlogs/postcss.config.mjs", "XHBlogs/tsconfig.json",
-
-        # 后台文件
-        "my-blog-manager/app/about/page.tsx", "my-blog-manager/app/admin",
-        "my-blog-manager/app/api", "my-blog-manager/app/chatter",
-        "my-blog-manager/app/drafts", "my-blog-manager/app/editor",
-        "my-blog-manager/app/friends", "my-blog-manager/app/moments",
-        "my-blog-manager/app/music", "my-blog-manager/app/photowall",
-        "my-blog-manager/app/posts", "my-blog-manager/app/projects",
-        "my-blog-manager/app/settings", "my-blog-manager/app/timeline",
-        "my-blog-manager/app/globals.css", "my-blog-manager/app/layout.tsx",
-        "my-blog-manager/app/page.tsx", "my-blog-manager/cms_core",
-        "my-blog-manager/components", "my-blog-manager/context", "my-blog-manager/app/tree",
-        "my-blog-manager/.gitignore", "my-blog-manager/launcher.py", "my-blog-manager/public",
-        "my-blog-manager/package.json", "my-blog-manager/package-lock.json",
-        "my-blog-manager/postcss.config.mjs", "my-blog-manager/run_me.py",
-        "my-blog-manager/Start.bat", "my-blog-manager/tsconfig.json"
-    ]
-
-    checkout_cmd = f"git checkout origin/main -- {' '.join(files_to_update)}"
-    run_cmd(checkout_cmd)
-
-    # 5. 安装依赖
-    print_step("[3/4] 同步依赖包...")
-    if os.path.exists("XHBlogs"):
-        run_cmd("npm install", cwd="XHBlogs")
-    if os.path.exists("my-blog-manager"):
-        run_cmd("npm install", cwd="my-blog-manager")
-
-    # 6. 修补配置
-    print_step("[4/4] 智能修补 siteConfig 配置文件...")
-    if os.path.exists(os.path.join("scripts", "checkConfig.mjs")):
-        run_cmd("node scripts/checkConfig.mjs")
-
-    print_step("✨ 升级完毕！如果有遗漏，请再次启动本程序！")
+    if not shutil.which('git') or not shutil.which('node') or not shutil.which('npm'):
+        raise RuntimeError('Please install Git, Node.js (>=20.9) and npm first.')
+    if not (ROOT/'.git').exists():
+        git('init')
+        git('remote','add','origin','https://github.com/heiehiehi/XinghuisamaBlogs.git')
+    git('fetch','origin','main')
+    names=git('ls-tree','-r','--name-only','origin/main').decode('utf-8').splitlines()
+    pending=[]
+    for name in names:
+        if not managed_path(name):
+            continue
+        path=ROOT/name
+        if not path.resolve().is_relative_to(ROOT.resolve()):
+            raise RuntimeError('Refusing a path outside the project: '+name)
+        if preserve_existing(name,path.exists()):
+            continue
+        content=git('show','origin/main:'+name)
+        if not path.exists() or path.read_bytes()!=content:
+            pending.append((name,content))
+    try:
+        changed=set(git('diff','HEAD','--name-only').decode('utf-8').splitlines())
+    except subprocess.CalledProcessError:
+        changed=set()
+    state_path=ROOT/'.update-backups/last-applied.json'
+    prior_state=json.loads(state_path.read_text(encoding='utf-8')) if state_path.exists() else {}
+    changed={name for name in changed if not (ROOT/name).is_file() or hashlib.sha256((ROOT/name).read_bytes()).hexdigest()!=prior_state.get(name)}
+    conflicts=changed.intersection(name for name,_ in pending)
+    if conflicts:
+        raise RuntimeError('Save/commit your local program edits before updating: '+', '.join(sorted(conflicts)))
+    backup=ROOT/'.update-backups'/datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+    applied=[]
+    try:
+        for name,content in pending:
+            path=ROOT/name
+            prior=path.exists()
+            if prior:
+                copy=backup/name; copy.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(path,copy)
+            path.parent.mkdir(parents=True,exist_ok=True)
+            applied.append((name,prior))
+            path.write_bytes(content)
+    except OSError:
+        for name,prior in reversed(applied):
+            if prior: shutil.copy2(backup/name,ROOT/name)
+            else: (ROOT/name).unlink(missing_ok=True)
+        raise
+    prior_state.update({name:hashlib.sha256(content).hexdigest() for name,content in pending})
+    state_path.parent.mkdir(parents=True,exist_ok=True)
+    state_path.write_text(json.dumps(prior_state,indent=2),encoding='utf-8')
+    npm=shutil.which('npm')
+    for app in ('XHBlogs','my-blog-manager'):
+        subprocess.run([npm,'install'],cwd=ROOT/app,shell=os.name=='nt',check=True)
+    print('Updated program files. Personal configuration, posts, briefing data, images and private credentials were preserved.')
+    if applied: print('Backup:',backup)
+    print('Start the console and check your settings before publishing.')
 
 
-if __name__ == "__main__":
-    main()
+if __name__=='__main__':
+    try: main()
+    except (OSError,ValueError,RuntimeError,subprocess.CalledProcessError) as error:
+        print('Update stopped:',error,file=sys.stderr)
+        raise SystemExit(1)
